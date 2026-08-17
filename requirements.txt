@@ -1,0 +1,6 @@
+# Laboratorio 3 - Modelacion y Simulacion
+# Python 3.14.6
+numpy==2.5.2
+matplotlib==3.11.1
+pandas==3.0.5
+ipykernel==7.3.0
