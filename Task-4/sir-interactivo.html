@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador SIR interactivo</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --line: #dfe3e8;
+    --txt: #1a1d21;
+    --muted: #5b6470;
+    --S: #2563eb;
+    --I: #dc2626;
+    --R: #16a34a;
+    --ok: #15803d;
+    --bad: #b91c1c;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--txt);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    padding: 14px 18px 16px;
+    gap: 12px;
+    overflow: hidden;
+  }
+  h1 { font-size: 17px; margin: 0; }
+  h1 span { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 8px; }
+
+  .top { display: grid; grid-template-columns: 330px 1fr; gap: 12px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .card > h2 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--muted); margin: 0 0 10px;
+  }
+
+  /* --- Controles --- */
+  .ctrl { margin-bottom: 12px; }
+  .ctrl:last-child { margin-bottom: 0; }
+  .ctrl .lab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .ctrl .lab b { font-weight: 600; }
+  .ctrl .val {
+    font-variant-numeric: tabular-nums; font-weight: 600;
+    background: #eef1f5; border-radius: 5px; padding: 1px 7px;
+  }
+  .ctrl .hint { color: var(--muted); font-size: 12px; }
+  input[type=range] { width: 100%; margin: 6px 0 0; accent-color: var(--I); }
+
+  /* --- Métricas --- */
+  .mgrid { display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 10px; }
+  .m { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .m .k { color: var(--muted); font-size: 11.5px; }
+  .m .v { font-size: 21px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .m .u { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .badge {
+    border-radius: 8px; padding: 8px 14px; color: #fff;
+    display: flex; flex-direction: column; justify-content: center; min-width: 150px;
+  }
+  .badge.ok  { background: var(--ok); }
+  .badge.bad { background: var(--bad); }
+  .badge .b1 { font-size: 15px; font-weight: 700; }
+  .badge .b2 { font-size: 11.5px; opacity: .92; }
+
+  /* --- Gráfica --- */
+  .chart { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .legend { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+  .legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+  .legend .dash { border-top: 2px dashed #6b7280; width: 16px; height: 0; }
+  .legend small { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+  canvas { flex: 1; width: 100%; min-height: 0; display: block; }
+</style>
+</head>
+<body>
+
+<h1>Simulador SIR interactivo<span>Laboratorio 3 &middot; Modelación y Simulación</span></h1>
+
+<div class="top">
+  <div class="card">
+    <h2>Controles</h2>
+
+    <div class="ctrl">
+      <div class="lab"><b>R<sub>0</sub></b> <span class="val" id="vR0">2.5</span></div>
+      <input type="range" id="sR0" min="0.5" max="5.0" step="0.1" value="2.5">
+      <div class="hint">Número reproductivo básico &middot; &beta; = R<sub>0</sub>&gamma; = <span id="vBeta">0.357</span> día<sup>&minus;1</sup></div>
+    </div>
+
+    <div class="ctrl">
+      <div class="lab"><b>Período infeccioso 1/&gamma;</b> <span class="val" id="vDur">7 días</span></div>
+      <input type="range" id="sDur" min="3" max="21" step="1" value="7">
+      <div class="hint">Duración media del contagio &middot; &gamma; = <span id="vGamma">0.1429</span> día<sup>&minus;1</sup></div>
+    </div>
+
+    <div class="ctrl">
+      <div class="lab"><b>Fracción inicial infectada I<sub>0</sub>/N</b> <span class="val" id="vFrac">0.002</span></div>
+      <input type="range" id="sFrac" min="0.001" max="0.05" step="0.001" value="0.002">
+      <div class="hint">Semilla del brote, como fracción de la población</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Métricas</h2>
+    <div class="mgrid">
+      <div class="m"><div class="k">R<sub>0</sub> actual</div><div class="v" id="mR0">2.5</div></div>
+      <div class="m"><div class="k">Umbral de inmunidad p* = 1 &minus; 1/R<sub>0</sub></div><div class="v" id="mP">60.0<span class="u"> %</span></div></div>
+      <div class="m"><div class="k">Pico de infectados</div><div class="v" id="mPeak">0.0<span class="u"> % de N</span></div></div>
+      <div class="m"><div class="k">Tiempo al pico</div><div class="v" id="mTpeak">0<span class="u"> días</span></div></div>
+      <div class="badge bad" id="badge">
+        <div class="b1" id="bTitle">R<sub>0</sub> &gt; 1</div>
+        <div class="b2" id="bText">La epidemia crece</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card chart">
+  <div class="legend">
+    <span><i style="background:var(--S)"></i>S(t) susceptibles</span>
+    <span><i style="background:var(--I)"></i>I(t) infectados</span>
+    <span><i style="background:var(--R)"></i>R(t) recuperados</span>
+    <span><i class="dash"></i>Capacidad hospitalaria (10 % de N)</span>
+    <small id="perf">&mdash;</small>
+  </div>
+  <canvas id="cv"></canvas>
+</div>
+
+<script>
+"use strict";
+
+// ---------------------------------------------------------------------------
+// Modelo SIR integrado con RK4. Se trabaja en fracciones de la población
+// (N = 1), de modo que S, I y R son fracciones y el 10 % es simplemente 0.10.
+// ---------------------------------------------------------------------------
+const DT = 0.25;    // paso de integración, días
+const T  = 365;     // horizonte de integración, días
+
+function campo(s, i, beta, gamma) {
+  const inf = beta * s * i;          // fuerza de infección con N = 1
+  return [-inf, inf - gamma * i, gamma * i];
+}
+
+function simular(R0, dur, frac) {
+  const gamma = 1 / dur;
+  const beta  = R0 * gamma;
+  const n = Math.round(T / DT);
+  const S = new Float64Array(n + 1);
+  const I = new Float64Array(n + 1);
+  const R = new Float64Array(n + 1);
+  S[0] = 1 - frac; I[0] = frac; R[0] = 0;
+
+  for (let k = 0; k < n; k++) {
+    const s = S[k], i = I[k], r = R[k], h = DT;
+    const a = campo(s, i, beta, gamma);
+    const b = campo(s + h / 2 * a[0], i + h / 2 * a[1], beta, gamma);
+    const c = campo(s + h / 2 * b[0], i + h / 2 * b[1], beta, gamma);
+    const d = campo(s + h * c[0], i + h * c[1], beta, gamma);
+    S[k + 1] = s + h / 6 * (a[0] + 2 * b[0] + 2 * c[0] + d[0]);
+    I[k + 1] = i + h / 6 * (a[1] + 2 * b[1] + 2 * c[1] + d[1]);
+    R[k + 1] = r + h / 6 * (a[2] + 2 * b[2] + 2 * c[2] + d[2]);
+  }
+
+  let j = 0;
+  for (let k = 1; k <= n; k++) if (I[k] > I[j]) j = k;
+
+  return { S, I, R, beta, gamma, n, pico: I[j], tPico: j * DT };
+}
+
+// ---------------------------------------------------------------------------
+// Dibujo de la gráfica sobre canvas
+// ---------------------------------------------------------------------------
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+const PAD = { l: 62, r: 16, t: 14, b: 46 };
+
+function dibujar(sim, tMax) {
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = Math.round(W * dpr);
+  cv.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const x0 = PAD.l, x1 = W - PAD.r, y0 = PAD.t, y1 = H - PAD.b;
+  const px = t => x0 + (t / tMax) * (x1 - x0);          // días -> pixeles
+  const py = v => y1 - v * (y1 - y0);                    // fracción -> pixeles
+
+  ctx.font = "12px system-ui, sans-serif";
+  ctx.lineWidth = 1;
+
+  // Rejilla y eje Y en porcentaje de N
+  for (let p = 0; p <= 100; p += 20) {
+    const y = py(p / 100);
+    ctx.strokeStyle = "#eceff3";
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+    ctx.fillStyle = "#5b6470"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillText(String(p), x0 - 8, y);
+  }
+
+  // Rejilla y eje X en días
+  const paso = tMax <= 200 ? 20 : 40;
+  for (let t = 0; t <= tMax; t += paso) {
+    const x = px(t);
+    ctx.strokeStyle = "#f2f4f7";
+    ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y1); ctx.stroke();
+    ctx.fillStyle = "#5b6470"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+    ctx.fillText(String(t), x, y1 + 7);
+  }
+
+  // Marco
+  ctx.strokeStyle = "#cfd5dd";
+  ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+
+  // Umbral de capacidad hospitalaria al 10 % de la población
+  const yCap = py(0.10);
+  ctx.save();
+  ctx.setLineDash([7, 5]);
+  ctx.strokeStyle = "#6b7280";
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x0, yCap); ctx.lineTo(x1, yCap); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = "#4b5563";
+  ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+  ctx.fillText("Capacidad hospitalaria (10 % de N)", x1 - 6, yCap - 4);
+
+  // Curvas S, I, R
+  const curvas = [[sim.S, "#2563eb"], [sim.R, "#16a34a"], [sim.I, "#dc2626"]];
+  const kMax = Math.min(sim.n, Math.round(tMax / DT));
+  ctx.lineWidth = 2.2;
+  ctx.lineJoin = "round";
+  for (const [arr, color] of curvas) {
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    for (let k = 0; k <= kMax; k++) {
+      const x = px(k * DT), y = py(arr[k]);
+      if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  // Marcador del pico de infectados
+  if (sim.tPico > 0 && sim.tPico <= tMax) {
+    ctx.fillStyle = "#dc2626";
+    ctx.beginPath();
+    ctx.arc(px(sim.tPico), py(sim.pico), 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Rótulos de los ejes, con unidades
+  ctx.fillStyle = "#1a1d21";
+  ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+  ctx.fillText("Tiempo (días)", (x0 + x1) / 2, H - 6);
+  ctx.save();
+  ctx.translate(14, (y0 + y1) / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textBaseline = "top";
+  ctx.fillText("Población (% de N)", 0, 0);
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------------------
+// Enlace con los controles
+// ---------------------------------------------------------------------------
+const el = id => document.getElementById(id);
+const sR0 = el("sR0"), sDur = el("sDur"), sFrac = el("sFrac");
+
+function actualizar() {
+  const t0 = performance.now();
+
+  const R0 = parseFloat(sR0.value);
+  const dur = parseInt(sDur.value, 10);
+  const frac = parseFloat(sFrac.value);
+  const sim = simular(R0, dur, frac);
+
+  // Valores en vivo de los controles
+  el("vR0").textContent = R0.toFixed(1);
+  el("vDur").textContent = dur + (dur === 1 ? " día" : " días");
+  el("vFrac").textContent = frac.toFixed(3);
+  el("vBeta").textContent = sim.beta.toFixed(3);
+  el("vGamma").textContent = sim.gamma.toFixed(4);
+
+  // Panel de métricas
+  el("mR0").textContent = R0.toFixed(1);
+  const p = R0 > 1 ? 100 * (1 - 1 / R0) : 0;
+  el("mP").innerHTML = p.toFixed(1) + '<span class="u"> %</span>';
+  el("mPeak").innerHTML = (100 * sim.pico).toFixed(2) + '<span class="u"> % de N</span>';
+  el("mTpeak").innerHTML = sim.tPico.toFixed(0) + '<span class="u"> días</span>';
+
+  // Indicador verde / rojo
+  const badge = el("badge");
+  const crece = R0 > 1;
+  badge.className = "badge " + (crece ? "bad" : "ok");
+  el("bTitle").innerHTML = crece ? "R<sub>0</sub> &gt; 1" : "R<sub>0</sub> &lt; 1";
+  el("bText").textContent = crece ? "La epidemia crece" : "La epidemia se extingue";
+
+  // Ventana de tiempo visible. Se usa 180 días salvo en los extremos del rango
+  // de los controles: brotes muy rápidos se acercan y brotes muy lentos se amplían.
+  let tMax = 180;
+  if (sim.tPico > 150) tMax = 365;
+  else if (sim.tPico > 0 && sim.tPico < 18) tMax = 60;
+  dibujar(sim, tMax);
+
+  el("perf").textContent = "actualizado en " + (performance.now() - t0).toFixed(1) + " ms";
+}
+
+for (const s of [sR0, sDur, sFrac]) s.addEventListener("input", actualizar);
+window.addEventListener("resize", actualizar);
+actualizar();
+</script>
+</body>
+</html>
