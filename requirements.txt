@@ -1,4 +1,9 @@
-mesa==2.4.0
-numpy>=1.26,<3
-matplotlib>=3.8,<4
-jupyterlab>=4.0,<5
+# Laboratorio 4 - Modelacion y Simulacion
+# Python 3.14.6
+# Mesa 3.0.x es la ultima serie que conserva mesa.time (RandomActivation) y schedule.remove().
+mesa==3.0.3
+numpy==2.5.2
+pandas==3.0.5
+matplotlib==3.11.1
+ipykernel==7.3.0
+jupyterlab==4.6.3
