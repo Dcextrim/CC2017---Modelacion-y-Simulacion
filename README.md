@@ -1,14 +1,22 @@
-# CC2017 - Modelación y Simulación
+# Laboratorio 4
 
-## Laboratorio 4 - Agent-Based Modeling
+Modelo basado en agentes (ABM) en Mesa que simula el desplazamiento diario en un centro urbano de 20×20 celdas, para estimar si un sistema de bicicletas compartidas reduce la congestión vehicular. El modelo compara dos escenarios (con y sin política) mediante 100 corridas de cada uno, y cuantifica la diferencia con intervalos de confianza bootstrap.
 
-La entrega está desarrollada en `Laboratorio4_ABM.ipynb` e incluye: modelo en Mesa, pruebas de verificación, corridas múltiples, bootstrap e interpretación ejecutiva.
+## Cómo ejecutar
 
-### Ejecución
+Requiere Python 3.14 o superior.
 
-1. Crear y activar un entorno virtual de Python.
-2. Instalar dependencias con `python -m pip install -r requirements.txt`.
-3. Abrir `Laboratorio4_ABM.ipynb` en Jupyter y ejecutar todas las celdas en orden.
+```bash
+python3 -m venv .venv
+source .venv/bin/activate          # en Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+jupyter lab Task-1-2.ipynb
+```
 
-El proyecto fija `mesa==2.4.0` porque la consigna requiere la clase
-`RandomActivation`, perteneciente a la API de schedulers anterior a Mesa 3.
+En Jupyter, seleccionar el kernel del entorno virtual y ejecutar todas las celdas en orden (*Run → Restart Kernel and Run All Cells*).
+
+Para ejecutarlo sin abrir Jupyter:
+
+```bash
+.venv/bin/jupyter nbconvert --to notebook --execute --inplace Task-1-2.ipynb
+```
